@@ -1,0 +1,47 @@
+﻿@page "/weather"
+@using System.Net.Http.Json
+@inject ForecastApiService ForecastApiService
+
+<PageTitle>Weather</PageTitle>
+
+<h1>Weather</h1>
+
+<p>This component demonstrates showing data.</p>
+
+@if (forecasts == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <MudDataGrid Items="@forecasts">
+        <Columns>
+            <PropertyColumn Property="x => x.Date" />
+            <PropertyColumn Property="x => x.TemperatureC" />
+            <PropertyColumn Property="x => x.Summary" />
+            <PropertyColumn Property="x => x.TemperatureF" />
+        </Columns>
+    </MudDataGrid>
+}
+
+@code {
+    private GetForecastResponse[]? forecasts;
+    private HubConnection? hubConnection;
+
+    protected override async Task OnInitializedAsync()
+    {
+        forecasts = await ForecastApiService.GetForecastAsync();
+
+        hubConnection = new HubConnectionBuilder()
+        .WithUrl("https://localhost:7153/forecasts-stream")
+        .Build();
+
+        hubConnection.On<GetForecastResponse[]>("UpdateForecasts", (updatedForecasts) =>
+        {
+            forecasts = updatedForecasts;
+            StateHasChanged(); 
+        });
+
+        await hubConnection.StartAsync();
+    }
+}
